@@ -35,6 +35,7 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, Produce
 import org.apache.kafka.common.utils.Utils
 
 import scala.io.Source
+import scala.util.Try
 
 /**
  * The mirror maker has the following architecture:
@@ -66,7 +67,8 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
   private val isShuttingDown: AtomicBoolean = new AtomicBoolean(false)
   // Track the messages not successfully sent by mirror maker.
   private val numDroppedMessages: AtomicInteger = new AtomicInteger(0)
-  private val messageHandler: MirrorMakerMessageHandler = defaultMirrorMakerMessageHandler
+  //partition awareness : changing val to var
+  private var messageHandler: MirrorMakerMessageHandler = null
   private var offsetCommitIntervalMs = 0
   private var abortOnSendFailure: Boolean = true
   @volatile private var exitingOnSendFailure: Boolean = false
@@ -114,6 +116,8 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
     maybeSetDefaultProperty(producerProps, ProducerConfig.ACKS_CONFIG, "all")
     maybeSetDefaultProperty(producerProps, ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "1")
     producer = new MirrorMakerProducer(producerProps)
+
+    messageHandler = new PartitionAwareMessageHandler(Try(producerProps.getProperty("retain.partition" , "true").toBoolean).getOrElse(false))
 
     // create helix manager
     val helixProps = Utils.loadProps(options.valueOf(mirrorMakerWorkerConf.getHelixConfigOpt))
@@ -412,6 +416,20 @@ class MirrorMakerWorker extends Logging with KafkaMetricsGroup {
       // rewrite topic between consuming side and producing side
       val topic = topicMappings.get(record.topic).getOrElse(record.topic)
       Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic, record.key(), record.message()))
+    }
+  }
+
+  //Start Partition awareness
+  private class PartitionAwareMessageHandler(retainPartition: Boolean) extends MirrorMakerMessageHandler {
+    def handle(record: MessageAndMetadata[Array[Byte], Array[Byte]]): util.List[ProducerRecord[Array[Byte], Array[Byte]]] = {
+      // rewrite topic between consuming side and producing side
+      val topic = topicMappings.get(record.topic).getOrElse(record.topic)
+      if(retainPartition){
+        Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic, record.partition , record.key(), record.message()))
+      }
+      else {
+        Collections.singletonList(new ProducerRecord[Array[Byte], Array[Byte]](topic, record.key(), record.message()))
+      }
     }
   }
 
