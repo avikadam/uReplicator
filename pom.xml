@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.uber.uReplicator</groupId>
   <artifactId>uReplicator</artifactId>
-  <version>1.0.3-SNAPSHOT</version>
+  <version>1.0.4-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>uReplicator</name>
 
@@ -75,12 +75,17 @@
       <name>Public online Restlet repository</name>
       <url>http://maven.restlet.org</url>
     </repository>
+    <repository>
+      <id>Cloudera</id>
+      <name>Public online Cloudera repository</name>
+      <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+    </repository>
   </repositories>
 
   <properties>
     <jdk.version>1.8</jdk.version>
     <scala.version>2.11.8</scala.version>
-    <kafka.version>0.9.0.1</kafka.version>
+    <kafka.version>0.9.0-kafka-2.0.2</kafka.version>
     <kafka.scala.version>2.11</kafka.scala.version>
     <helix.version>0.6.8</helix.version>
     <yammer.version>2.2.0</yammer.version>
